@@ -35,7 +35,7 @@ telemetry = None
 
 
 class LiteLLMDatabaseConnectionPool(Enum):
-    database_connection_pool_limit = 10
+    database_connection_pool_limit = 25  # Increased from 10 for reliability (update_spend needs available connections)
     database_connection_pool_timeout = 60
 
 
@@ -1070,6 +1070,12 @@ def run_server(
                 "database_connection_pool_limit",
                 LiteLLMDatabaseConnectionPool.database_connection_pool_limit.value,
             )
+            # Allow environment variable override: LITELLM_DB_CONNECTION_POOL_LIMIT
+            if env_pool_limit := os.getenv("LITELLM_DB_CONNECTION_POOL_LIMIT"):
+                try:
+                    db_connection_pool_limit = int(env_pool_limit)
+                except ValueError:
+                    pass  # Use config/default if env var is not a valid integer
             db_connection_timeout = general_settings.get("database_connection_timeout")
             if db_connection_timeout is None:
                 db_connection_timeout = general_settings.get("database_connection_pool_timeout")
@@ -1112,6 +1118,12 @@ def run_server(
         if config is None:
             db_connection_pool_limit = LiteLLMDatabaseConnectionPool.database_connection_pool_limit.value
             db_connection_timeout = LiteLLMDatabaseConnectionPool.database_connection_pool_timeout.value
+            # Allow environment variable override
+            if env_pool_limit := os.getenv("LITELLM_DB_CONNECTION_POOL_LIMIT"):
+                try:
+                    db_connection_pool_limit = int(env_pool_limit)
+                except ValueError:
+                    pass  # Use default if env var is not a valid integer
 
         if os.getenv("DATABASE_URL", None) is not None or os.getenv("DIRECT_URL", None) is not None:
             from litellm.proxy.db.db_url_settings import (
